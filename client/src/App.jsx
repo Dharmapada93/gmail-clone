@@ -39,7 +39,10 @@ function App() {
         ) : (
           <Route path="/" element={<Layout />}>
             <Route index element={<Navigate to="/inbox" />} />
+            <Route path="login" element={<Navigate to="/inbox" />} />
+            <Route path="register" element={<Navigate to="/inbox" />} />
             <Route path=":folder" element={<Inbox />} />
+            <Route path="*" element={<Navigate to="/inbox" />} />
           </Route>
         )}
       </Routes>

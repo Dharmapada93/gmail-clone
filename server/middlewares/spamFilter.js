@@ -1,4 +1,4 @@
-const axios = require('axios');
+const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 // Basic keyword fallback
 const fallbackFilter = (subject, body) => {
@@ -11,35 +11,30 @@ const aiSpamFilter = async (req, res, next) => {
   if (!req.body.subject && !req.body.body) return next();
 
   const { subject, body } = req.body;
-  const apiKey = process.env.OPENAI_API_KEY;
+  const apiKey = process.env.GEMINI_API_KEY;
 
-  if (!apiKey || apiKey === 'your_openai_api_key_here') {
+  if (!apiKey || apiKey === 'your_gemini_api_key_here') {
     // Fallback to keyword filter
     req.body.isSpam = fallbackFilter(subject, body);
     return next();
   }
 
   try {
-    const response = await axios.post('https://api.openai.com/v1/chat/completions', {
-      model: 'gpt-3.5-turbo',
-      messages: [{
-        role: 'user',
-        content: `Is the following email spam? Reply with exactly "YES" or "NO".\nSubject: ${subject}\nBody: ${body}`
-      }],
-      temperature: 0.0,
-      max_tokens: 5
-    }, {
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json'
-      }
-    });
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-    const answer = response.data.choices[0].message.content.trim().toUpperCase();
-    req.body.isSpam = answer === 'YES';
+    const prompt = `Is the following email spam? Reply with exactly "YES" or "NO" and nothing else.
+    Subject: ${subject}
+    Body: ${body}`;
+
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const answer = response.text().trim().toUpperCase();
+    
+    req.body.isSpam = answer.includes('YES');
     next();
   } catch (error) {
-    console.error('AI Spam Filter Error:', error.message);
+    console.error('Gemini Spam Filter Error:', error.message);
     // Fallback if API fails
     req.body.isSpam = fallbackFilter(subject, body);
     next();
